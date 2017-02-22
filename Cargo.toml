@@ -1,0 +1,9 @@
+[package]
+name = "markdown-to-plaintext"
+version = "0.1.0"
+authors = ["Constantin Berhard <git.mail.enormator@xoxy.net>"]
+
+[dependencies]
+pulldown-cmark = "*"
+xi-unicode = "*"
+unicode-segmentation = "*"
