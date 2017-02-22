@@ -44,13 +44,11 @@ fn push_txt<'a, I: Iterator<Item = md::Event<'a>>>(buf: &mut String, mut iter: I
     let mut line_buffer = String::new();
     fn split_by_hard_breaks(s: &str) -> Vec<&str> {
         let mut rest = s;
-        let mut this = "";
         let mut ret = Vec::new();
         while let Some(i) = LineBreakIterator::new(rest).filter(|b| b.1).map(|b| b.0).next() {
             let t = rest.split_at(i);
             rest = t.1;
-            this = t.0;
-            ret.push(this);
+            ret.push(t.0);
         }
         ret
     }
@@ -75,7 +73,19 @@ fn push_txt<'a, I: Iterator<Item = md::Event<'a>>>(buf: &mut String, mut iter: I
                                     }
                                 }
                                 TextBreakRule::BreakAtWhitespace => {
-                                    unimplemented!()
+                                    match LineBreakIterator::new(line).map(|b| { debug_assert_eq!(b.1, false); b.0 } ).take_while(|i| *i <= *columns as usize).last() {
+                                        Some(breakpos) => unimplemented!(),
+                                        None => {
+                                            // Line is not breakable such that the column limit is satisfied
+                                            if *enforce_max_columns {
+                                                // Break it anyway, because we must.
+                                                unimplemented!()
+                                            } else {
+                                                // Let it overflow
+                                                unimplemented!()
+                                            }
+                                        }
+                                    }
                                 }
                             }
                         }
