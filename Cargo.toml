@@ -5,5 +5,4 @@ authors = ["Constantin Berhard <git.mail.enormator@xoxy.net>"]
 
 [dependencies]
 pulldown-cmark = "*"
-xi-unicode = "*"
-unicode-segmentation = "*"
+cursive-break = { git="https://github.com/ConnyOnny/Cursive-Break.git" }

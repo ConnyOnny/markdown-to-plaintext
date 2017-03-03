@@ -1,20 +1,10 @@
 extern crate pulldown_cmark as md;
-extern crate unicode_segmentation;
-use unicode_segmentation::UnicodeSegmentation;
-extern crate xi_unicode;
-use xi_unicode::LineBreakIterator;
-
-enum TextBreakRule {
-    BreakAtWhitespace,
-    BreakAnywhere,
-}
+extern crate cursive_break;
+use cursive_break::utils::LinesIterator;
 
 enum TextWrapping {
     WrapText {
-        text_break_rule: TextBreakRule,
         columns: u32,
-        /// Wrap single words longer than a line into multiple lines, breaking anywhere, independent of the text_break_rule
-        enforce_max_columns: bool
     },
     NoWrapping,
 }
@@ -27,9 +17,7 @@ impl Default for Config {
     fn default() -> Config {
         Config {
             text_wrapping: TextWrapping::WrapText {
-                text_break_rule: TextBreakRule::BreakAtWhitespace,
                 columns: 80,
-                enforce_max_columns: false,
             }
         }
     }
@@ -42,58 +30,23 @@ fn push_txt<'a, I: Iterator<Item = md::Event<'a>>>(buf: &mut String, mut iter: I
     let mut footer = String::new();
     let mut there_was_a_paragraph_already = false;
     let mut line_buffer = String::new();
-    fn split_by_hard_breaks(s: &str) -> Vec<&str> {
-        let mut rest = s;
-        let mut ret = Vec::new();
-        while let Some(i) = LineBreakIterator::new(rest).filter(|b| b.1).map(|b| b.0).next() {
-            let t = rest.split_at(i);
-            rest = t.1;
-            ret.push(t.0);
-        }
-        ret
-    }
     fn line_push(buf: &mut String, linebuf: &mut String, config: &Config) {
-        {
-            // In this block, linebuf is immutable.
-            let actual_lines = split_by_hard_breaks(linebuf);
-            for line in actual_lines.iter() {
-                match config.text_wrapping {
-                    TextWrapping::WrapText { ref columns, ref text_break_rule, ref enforce_max_columns } => {
-                        let clusters = UnicodeSegmentation::graphemes(*line, true).collect::<Vec<_>>();
-                        if clusters.len() <= *columns as usize {
-                            buf.push_str(line);
-                        } else {
-                            match *text_break_rule {
-                                TextBreakRule::BreakAnywhere => {
-                                    for (i,s) in clusters.iter().enumerate() {
-                                        if i % (*columns as usize) == 0 && i>0 {
-                                            buf.push_str("\n");
-                                        }
-                                        buf.push_str(s);
-                                    }
-                                }
-                                TextBreakRule::BreakAtWhitespace => {
-                                    match LineBreakIterator::new(line).map(|b| { debug_assert_eq!(b.1, false); b.0 } ).take_while(|i| *i <= *columns as usize).last() {
-                                        Some(breakpos) => unimplemented!(),
-                                        None => {
-                                            // Line is not breakable such that the column limit is satisfied
-                                            if *enforce_max_columns {
-                                                // Break it anyway, because we must.
-                                                unimplemented!()
-                                            } else {
-                                                // Let it overflow
-                                                unimplemented!()
-                                            }
-                                        }
-                                    }
-                                }
-                            }
-                        }
+        use TextWrapping::*;
+        match config.text_wrapping {
+            WrapText{columns} => {
+                let it = LinesIterator::new(linebuf, columns as usize);
+                let mut first_row = true;
+                for row in it {
+                    if !first_row {
+                        buf.push_str("\n");
+                        first_row = false;
                     }
-                    TextWrapping::NoWrapping => {
-                        buf.push_str(line);
-                    }
+                    let slice = &linebuf[row.start..row.end];
+                    buf.push_str(slice);
                 }
+            }
+            NoWrapping => {
+                buf.push_str(linebuf);
             }
         }
         linebuf.clear();
@@ -186,9 +139,7 @@ mod tests {
         let md = std::iter::repeat('x').take(strlen).collect::<String>();
         let mut cfg = Config::default();
         cfg.text_wrapping = TextWrapping::WrapText {
-            text_break_rule: TextBreakRule::BreakAnywhere,
             columns: cols as u32,
-            enforce_max_columns: true,
         };
         let txt = markdown_to_plaintext(&md, &cfg);
         let expected = "xxxxxxxxxx\nxxxxxxxxxx\nxxxx";
