@@ -23,7 +23,7 @@ impl Default for Config {
     }
 }
 
-fn push_txt<'a, I: Iterator<Item = md::Event<'a>>>(buf: &mut String, mut iter: I, config: &Config) {
+fn push_txt<'a, I: Iterator<Item = md::Event<'a>>>(buf: &mut String, iter: I, config: &Config) {
     use md::Event::*;
     use md::Tag::*;
     let mut linkctr = 1;
@@ -37,10 +37,11 @@ fn push_txt<'a, I: Iterator<Item = md::Event<'a>>>(buf: &mut String, mut iter: I
                 let it = LinesIterator::new(linebuf, columns as usize);
                 let mut first_row = true;
                 for row in it {
+                    assert!(row.width <= columns as usize);
                     if !first_row {
                         buf.push_str("\n");
-                        first_row = false;
                     }
+                    first_row = false;
                     let slice = &linebuf[row.start..row.end];
                     buf.push_str(slice);
                 }
@@ -132,8 +133,18 @@ mod tests {
         assert_eq!(txt, "Dies ist ein Link[1].\n\n[1]\u{00A0}http://example.com");
     }
     #[test]
+    fn regular_break() {
+        let md = "Lorem Ipsum Dolor Sit";
+        let expected = "Lorem Ipsum\nDolor Sit";
+        let mut cfg = Config::default();
+        cfg.text_wrapping = TextWrapping::WrapText {
+            columns: 11,
+        };
+        let txt = markdown_to_plaintext(&md, &cfg);
+        assert_eq!(txt, expected);
+    }
+    #[test]
     fn break_anywhere() {
-        println!("break anywhere test starting up");
         let cols = 10;
         let strlen = 24;
         let md = std::iter::repeat('x').take(strlen).collect::<String>();
@@ -144,5 +155,14 @@ mod tests {
         let txt = markdown_to_plaintext(&md, &cfg);
         let expected = "xxxxxxxxxx\nxxxxxxxxxx\nxxxx";
         assert_eq!(txt, expected);
+    }
+    #[test]
+    fn no_breaking() {
+        let x = std::iter::repeat('x').take(100).collect::<String>();
+        let md = format!("{} {}", x, x);
+        let mut cfg = Config::default();
+        cfg.text_wrapping = TextWrapping::NoWrapping;
+        let txt = markdown_to_plaintext(&md, &cfg);
+        assert_eq!(md, txt);
     }
 }
