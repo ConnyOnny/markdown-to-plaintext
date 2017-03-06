@@ -23,6 +23,17 @@ impl Default for Config {
     }
 }
 
+impl Config {
+    pub fn with_line_wrapping_after(mut self, columns: u32) -> Self {
+        self.text_wrapping = TextWrapping::WrapText { columns: columns };
+        self
+    }
+    pub fn without_line_wrapping(mut self) -> Self {
+        self.text_wrapping = TextWrapping::NoWrapping;
+        self
+    }
+}
+
 fn push_txt<'a, I: Iterator<Item = md::Event<'a>>>(buf: &mut String, iter: I, config: &Config) {
     use md::Event::*;
     use md::Tag::*;
@@ -115,51 +126,4 @@ pub fn markdown_to_plaintext<'a>(markdown: &'a str, config: &Config) -> String {
     let parser = md::Parser::new(markdown);
     push_txt(&mut ret, parser, config);
     ret
-}
-
-#[cfg(test)]
-mod tests {
-    use super::*;
-    impl From<Option<u32>> for Config {
-        fn from(x: Option<u32>) -> Config {
-            Config {
-                text_wrapping: match x {
-                    Some(cols) => TextWrapping::WrapText { columns: cols },
-                    None => TextWrapping::NoWrapping,
-                }
-            }
-        }
-    }
-    fn eq_test<C: Into<Config>>(md: &str, expected_txt: &str, config: C) {
-        let config : Config = config.into();
-        assert_eq!(expected_txt, markdown_to_plaintext(md, &config));
-    }
-    #[test]
-    fn simple() {
-        let s = "Dies ist ein Test.";
-        eq_test(s, s, Config::default());
-    }
-    #[test]
-    fn link() {
-        eq_test("Dies ist ein [Link](http://example.com).",
-            "Dies ist ein Link[1].\n\n[1]\u{00A0}http://example.com",
-            Config::default());
-    }
-    #[test]
-    fn regular_break() {
-        eq_test("Lorem Ipsum Dolor Sit",
-            "Lorem Ipsum\nDolor Sit",
-            Some(11));
-    }
-    #[test]
-    fn break_anywhere() {
-        eq_test("xxxxxxxxxxxxxxxxxxxxxxxx",
-            "xxxxxxxxxx\nxxxxxxxxxx\nxxxx",
-            Some(10));
-    }
-    #[test]
-    fn no_wrap() {
-        let s : String = "word ".chars().cycle().take(500).collect();
-        eq_test(&s, &s, None); // None => NoWrapping
-    }
 }
