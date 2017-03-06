@@ -120,49 +120,46 @@ pub fn markdown_to_plaintext<'a>(markdown: &'a str, config: &Config) -> String {
 #[cfg(test)]
 mod tests {
     use super::*;
+    impl From<Option<u32>> for Config {
+        fn from(x: Option<u32>) -> Config {
+            Config {
+                text_wrapping: match x {
+                    Some(cols) => TextWrapping::WrapText { columns: cols },
+                    None => TextWrapping::NoWrapping,
+                }
+            }
+        }
+    }
+    fn eq_test<C: Into<Config>>(md: &str, expected_txt: &str, config: C) {
+        let config : Config = config.into();
+        assert_eq!(expected_txt, markdown_to_plaintext(md, &config));
+    }
     #[test]
     fn simple() {
-        let md = "Dies ist ein Test.";
-        let txt = markdown_to_plaintext(md, &Config::default());
-        assert_eq!(txt, md);
+        let s = "Dies ist ein Test.";
+        eq_test(s, s, Config::default());
     }
     #[test]
     fn link() {
-        let md = "Dies ist ein [Link](http://example.com).";
-        let txt = markdown_to_plaintext(md, &Config::default());
-        assert_eq!(txt, "Dies ist ein Link[1].\n\n[1]\u{00A0}http://example.com");
+        eq_test("Dies ist ein [Link](http://example.com).",
+            "Dies ist ein Link[1].\n\n[1]\u{00A0}http://example.com",
+            Config::default());
     }
     #[test]
     fn regular_break() {
-        let md = "Lorem Ipsum Dolor Sit";
-        let expected = "Lorem Ipsum\nDolor Sit";
-        let mut cfg = Config::default();
-        cfg.text_wrapping = TextWrapping::WrapText {
-            columns: 11,
-        };
-        let txt = markdown_to_plaintext(&md, &cfg);
-        assert_eq!(txt, expected);
+        eq_test("Lorem Ipsum Dolor Sit",
+            "Lorem Ipsum\nDolor Sit",
+            Some(11));
     }
     #[test]
     fn break_anywhere() {
-        let cols = 10;
-        let strlen = 24;
-        let md = std::iter::repeat('x').take(strlen).collect::<String>();
-        let mut cfg = Config::default();
-        cfg.text_wrapping = TextWrapping::WrapText {
-            columns: cols as u32,
-        };
-        let txt = markdown_to_plaintext(&md, &cfg);
-        let expected = "xxxxxxxxxx\nxxxxxxxxxx\nxxxx";
-        assert_eq!(txt, expected);
+        eq_test("xxxxxxxxxxxxxxxxxxxxxxxx",
+            "xxxxxxxxxx\nxxxxxxxxxx\nxxxx",
+            Some(10));
     }
     #[test]
-    fn no_breaking() {
-        let x = std::iter::repeat('x').take(100).collect::<String>();
-        let md = format!("{} {}", x, x);
-        let mut cfg = Config::default();
-        cfg.text_wrapping = TextWrapping::NoWrapping;
-        let txt = markdown_to_plaintext(&md, &cfg);
-        assert_eq!(md, txt);
+    fn no_wrap() {
+        let s : String = "word ".chars().cycle().take(500).collect();
+        eq_test(&s, &s, None); // None => NoWrapping
     }
 }
