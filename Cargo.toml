@@ -6,3 +6,4 @@ authors = ["Constantin Berhard <git.mail.enormator@xoxy.net>"]
 [dependencies]
 pulldown-cmark = "*"
 cursive-break = { git="https://github.com/ConnyOnny/Cursive-Break.git" }
+unicode-width = "*"

@@ -60,5 +60,30 @@ fn break_anywhere() {
 #[test]
 fn no_wrap() {
     let s : String = "word ".chars().cycle().take(500).collect();
+    assert_eq!(s.len(), 500);
     eq_test(&s, &s, None); // None => NoWrapping
+}
+#[test]
+fn wrap_exact() {
+    let s = "abra a";
+    let w = "abra\na";
+    println!("test wrapping");
+    eq_test(&s, &s, Some(6));
+    println!("test NOT wrapping");
+    eq_test(&s, &w, Some(5));
+}
+#[test]
+fn quote_simple() {
+    let md = "> A famous quote.";
+    let expected = "> A famous quote.";
+    eq_test(md, expected, Config::default());
+}
+#[test]
+fn quote_wrap() {
+    let md = "> These are some very fine words.";
+    let wrapped = "> These are some very fine\n> words.";
+    println!("test wrapping");
+    eq_test(md, wrapped, Config::default().with_line_wrapping_after(32));
+    println!("test NOT wrapping");
+    eq_test(md, md, Config::default().with_line_wrapping_after(33));
 }
